@@ -21,4 +21,4 @@ services:
       - key: DIR_USE_MOCK_LLM
         value: "true"
       - key: DIR_CORS_ORIGINS
-        value: '["https://your-vercel-app.vercel.app"]'
+        value: '["https://devops-incident-resolver.vercel.app/"]'
