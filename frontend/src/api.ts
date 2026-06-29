@@ -2,8 +2,10 @@ import axios from "axios";
 
 import type { DemoIncident, Incident, IncidentSeverity, StreamEvent, TraceEvent } from "./types";
 
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim() || "/api";
+
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api",
+  baseURL: apiBaseUrl,
   timeout: 20_000
 });
 
@@ -59,8 +61,7 @@ export function subscribeToIncident(
   onEvent: (event: StreamEvent) => void,
   onError: () => void
 ): EventSource {
-  const base = import.meta.env.VITE_API_BASE_URL ?? "/api";
-  const source = new EventSource(`${base}/incidents/${id}/stream`);
+  const source = new EventSource(`${apiBaseUrl}/incidents/${id}/stream`);
   source.onmessage = (message) => onEvent(JSON.parse(message.data) as StreamEvent);
   const eventTypes = ["trace", "trace.replay", "incident.updated", "incident.resolved"];
   eventTypes.forEach((type) => {
