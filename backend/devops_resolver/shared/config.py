@@ -1,8 +1,9 @@
+import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import Field, PostgresDsn, RedisDsn, computed_field
+from pydantic import Field, PostgresDsn, RedisDsn, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,7 +20,27 @@ class Settings(BaseSettings):
     app_name: str = "Adaptive DevOps Incident Resolver"
     environment: Literal["local", "test", "staging", "production"] = "local"
     log_level: str = "INFO"
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    cors_origins: list[str] | str = Field(default_factory=lambda: ["http://localhost:5173"])
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            raw_value = value.strip()
+            if not raw_value:
+                return []
+            try:
+                parsed = json.loads(raw_value)
+                if isinstance(parsed, list):
+                    return [str(item) for item in parsed]
+            except json.JSONDecodeError:
+                pass
+            if raw_value.startswith(("http://", "https://")):
+                return [raw_value]
+            return [item.strip() for item in raw_value.split(",") if item.strip()]
+        if isinstance(value, list):
+            return [str(item) for item in value]
+        return value
 
     database_url: PostgresDsn | None = None
     redis_url: RedisDsn | None = None
