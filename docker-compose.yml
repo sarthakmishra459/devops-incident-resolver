@@ -1,0 +1,80 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - .env
+    environment:
+      DIR_DATABASE_URL: postgresql+psycopg://resolver:resolver@postgres:5432/resolver
+      DIR_REDIS_URL: redis://redis:6379/0
+      DIR_RABBITMQ_URL: amqp://resolver:resolver@rabbitmq:5672/
+      DIR_CORS_ORIGINS: '["http://localhost:5173","http://localhost:8080"]'
+      DIR_LLM_PROVIDER: ${DIR_LLM_PROVIDER:-local}
+      DIR_GROQ_API_KEY: ${DIR_GROQ_API_KEY:-}
+      DIR_GROQ_BASE_URL: ${DIR_GROQ_BASE_URL:-https://api.groq.com/openai/v1}
+      DIR_LLM_MODEL: ${DIR_LLM_MODEL:-llama-3.1-8b-instant}
+    ports:
+      - "8000:8000"
+    volumes:
+      - resolver-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: resolver
+      POSTGRES_USER: resolver
+      POSTGRES_PASSWORD: resolver
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resolver -d resolver"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: resolver
+      RABBITMQ_DEFAULT_PASS: resolver
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  resolver-data:
+  postgres-data:
